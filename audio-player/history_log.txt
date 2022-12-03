@@ -1,0 +1,3 @@
+Unsupported format unsupported feature: id3v2: unsupported ID3v2 version
+=> fixed with cargo changes :
+symphonia = { version = "0.5.1", features = ["mp3", "symphonia-bundle-mp3"] }
