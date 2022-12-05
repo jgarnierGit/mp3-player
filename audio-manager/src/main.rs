@@ -3,57 +3,49 @@ use audio_player::MetadataParserBuilder;
 use std::fs::{self, DirEntry};
 use std::io;
 use std::path::Path;
-static mut COUNTER: u32 = 0;
+use std::rc::Rc;
 
 fn main() {
     println!("Hello, world!");
     let path = Path::new("D:/Documents/prog/rust/mp3Player/audio-project/audio-manager/assets");
     let metadata_parser = MetadataParserBuilder::build();
-    //let path = Path::new("D:/mp3");
-    /*
-    visit_dirs(path, &|e| {
-          println!("{:?} ", e.file_name()) //, e.metadata().unwrap()
-      })
-      .unwrap();
-    */
-    // TODO visit_dirs_path(path, print_metadatas);
-    visit_dirs(path, &count).unwrap();
-    unsafe {
-        println!("total {}", COUNTER);
-    }
+    visit_dirs_path(path, &move |path| metadata_parser.print_metadata(path)).unwrap();
+    let mut counter = Rc::new(0);
+    let mut closure_counter = {
+        let test_mut = Rc::get_mut(&mut counter).unwrap();
+        move |entry: &DirEntry| {
+            if let Ok(ftype) = entry.file_type() {
+                println!("{:?}", ftype);
+            }
+            *test_mut += 1;
+        }
+    };
+    visit_dirs(path, &mut closure_counter).unwrap();
+    println!("total {:?}", counter.as_ref());
+    visit_dirs(path, &mut |_dir| println!("nothing special")).unwrap();
 }
-fn print_metadatas() {}
 
-fn count(entry: &DirEntry) {
-    if let Ok(ftype) = entry.file_type() {
-        println!("{:?}", ftype);
-    }
-    unsafe {
-        COUNTER += 1;
-    }
-}
-/*
-fn visit_dirs_path<T>(dir: &Path, cb: &T) -> io::Result<()>
+fn visit_dirs_path<T>(path: &Path, cb: &T) -> io::Result<()>
 where
     T: Fn(&Path),
 {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
+    if path.is_dir() {
+        for entry in fs::read_dir(path)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                visit_dirs(&path, cb)?;
+                visit_dirs_path(&path, cb)?;
             } else {
-                cb(&entry);
+                cb(&path);
             }
         }
     }
     Ok(())
-}*/
+}
 
-fn visit_dirs<T>(dir: &Path, cb: &T) -> io::Result<()>
+fn visit_dirs<T>(dir: &Path, cb: &mut T) -> io::Result<()>
 where
-    T: Fn(&DirEntry),
+    T: FnMut(&DirEntry),
 {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
