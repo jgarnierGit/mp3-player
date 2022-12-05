@@ -16,16 +16,22 @@ pub mod metadata_parser_builder {
     use std::path::Path;
 
     /// Build a MetadataParser from current crate used
-    pub fn build() -> MetadataParserWrapper<SymphoniaWrapper> {
+    pub fn build() -> MetadataParserWrapper {
         MetadataParserWrapper {
-            wrapped: SymphoniaWrapper {},
+            wrapped: Box::new(SymphoniaWrapper {}),
         }
     }
-    pub struct MetadataParserWrapper<T: MetadataParser> {
-        wrapped: T,
+    pub struct MetadataParserWrapper {
+        wrapped: Box<dyn MetadataParser>,
     }
 
-    impl<T: MetadataParser> MetadataParser for MetadataParserWrapper<T> {
+    impl MetadataParserWrapper {
+        pub fn test() {
+            println!("coucou");
+        }
+    }
+
+    impl MetadataParser for MetadataParserWrapper {
         fn print_metadata(&self, audio_path: &Path) {
             self.wrapped.print_metadata(audio_path);
         }
