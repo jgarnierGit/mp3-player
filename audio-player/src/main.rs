@@ -13,7 +13,7 @@ fn main() {
     //let music_path = Path::new("./assets/MLKDream.mp3");
     println!("{:?}", env::current_dir());
     println!("trying to fetch {:?}", music_path.display());
-    symphonia_wrapper::parseMetadata(music_path);
+    symphonia_wrapper::parse(music_path);
     let code = 0;
     /*
     let code = match symphonia_wrapper::playTrack(music_path) {

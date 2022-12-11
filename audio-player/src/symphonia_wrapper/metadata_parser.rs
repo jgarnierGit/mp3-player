@@ -1,6 +1,6 @@
 use symphonia::core::{
     formats::{Cue, Track},
-    meta::{ColorMode, Tag, Value, Visual},
+    meta::{ColorMode, StandardTagKey, Tag, Value, Visual},
     probe::ProbeResult,
     units::TimeBase,
 };
@@ -15,6 +15,64 @@ pub fn parse(music_path: &Path) {
         Err(err) => panic!("Unsupported format {}", err),
     };
     print_format(&mut probed);
+}
+
+/// FIXME can surely return non static lifetime as metadata is get from audio_path?
+pub fn get_metadata_string(audio_path: &Path, target_metadata: String) -> String {
+    let mut probed = match commons::get_probe(audio_path) {
+        Ok(probe) => probe,
+        Err(err) => panic!("Unsupported format {}", err),
+    };
+    // Prefer metadata that's provided in the container format, over other tags found during the
+    // probe operation.
+    if let Some(metadata_rev) = probed.format.metadata().current() {
+        get_tag_string(metadata_rev.tags(), &target_metadata)
+    } else if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
+        get_tag_string(metadata_rev.tags(), &target_metadata)
+    } else {
+        String::from("")
+    }
+}
+
+fn get_tag_string(tags: &[Tag], target_metadata: &String) -> String {
+    if !tags.is_empty() {
+        let mut idx = 1;
+
+        // Print tags with a standard tag key first, these are the most common tags.
+        for tag in tags.iter().filter(|tag| tag.is_known()) {
+            if let Some(matchin_result) = get_matching_tag(tag, target_metadata) {
+                return matchin_result.to_string();
+            }
+            idx += 1;
+        }
+
+        // Print the remaining tags with keys truncated to 26 characters.
+        for tag in tags.iter().filter(|tag| !tag.is_known()) {
+            if let Some(matchin_result) = get_matching_tag(tag, target_metadata) {
+                return matchin_result.to_string();
+            }
+            idx += 1;
+        }
+    }
+    String::from("")
+}
+
+fn get_stantard_tag_key(target_metadata: &String) -> Option<StandardTagKey> {
+    match target_metadata.as_str() {
+        "genre" => Some(StandardTagKey::Genre),
+        _ => None,
+    }
+}
+
+fn get_matching_tag<'a>(tag: &'a Tag, target_metadata: &String) -> Option<&'a Value> {
+    if let Some(std_key) = tag.std_key {
+        if let Some(target_key) = get_stantard_tag_key(target_metadata) {
+            if std_key == target_key {
+                return Some(&tag.value);
+            }
+        }
+    }
+    None
 }
 
 fn print_format(probed: &mut ProbeResult) {

@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 audio-player = { path = "../audio-player"}
+tempfile = "3.3.0"
