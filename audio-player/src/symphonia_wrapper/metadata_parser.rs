@@ -7,6 +7,7 @@ use symphonia::core::{
 
 use super::commons;
 use log::info;
+use std::error::Error;
 use std::path::Path;
 
 pub fn parse(music_path: &Path) {
@@ -18,20 +19,22 @@ pub fn parse(music_path: &Path) {
 }
 
 /// FIXME can surely return non static lifetime as metadata is get from audio_path?
-pub fn get_metadata_string(audio_path: &Path, target_metadata: String) -> String {
-    let mut probed = match commons::get_probe(audio_path) {
-        Ok(probe) => probe,
-        Err(err) => panic!("Unsupported format {}", err),
-    };
+pub fn get_metadata_string(
+    audio_path: &Path,
+    target_metadata: &String,
+) -> Result<String, Box<dyn Error>> {
+    let mut probed = commons::get_probe(audio_path)?;
     // Prefer metadata that's provided in the container format, over other tags found during the
     // probe operation.
+    let tag_content: String;
     if let Some(metadata_rev) = probed.format.metadata().current() {
-        get_tag_string(metadata_rev.tags(), &target_metadata)
+        tag_content = get_tag_string(metadata_rev.tags(), &target_metadata);
     } else if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
-        get_tag_string(metadata_rev.tags(), &target_metadata)
+        tag_content = get_tag_string(metadata_rev.tags(), &target_metadata);
     } else {
-        String::from("")
+        tag_content = String::from("");
     }
+    Ok(tag_content)
 }
 
 fn get_tag_string(tags: &[Tag], target_metadata: &String) -> String {

@@ -1,35 +1,47 @@
+use std::error::Error;
 use std::{collections::HashMap, fs::DirEntry, path::Path, rc::Rc};
 
 use audio_player::MetadataParserWrapper;
 
 use crate::audio_library::visitor;
 
-pub fn aggregate_by_sample_rate(
+pub fn aggregate_by(
     path: &Path,
     metadata_parser: Box<dyn MetadataParserWrapper>,
-) -> Rc<HashMap<String, Rc<usize>>> {
+    tag: &String,
+) -> (Rc<HashMap<String, Rc<usize>>>, Rc<Vec<Box<dyn Error>>>) {
     let mut sample_aggr: Rc<HashMap<String, Rc<usize>>> = Rc::new(HashMap::new());
+    let mut errors: Rc<Vec<Box<dyn Error>>> = Rc::new(Vec::new());
 
     let mut closure_sample_aggr = {
         let mut_map = Rc::get_mut(&mut sample_aggr).unwrap();
+        let mut_errors = Rc::get_mut(&mut errors).unwrap();
+
         move |_dir: &DirEntry, audio_path: &Path| {
-            // let genre = Box::new(MeGenre {});
-            let metadata = metadata_parser.get_metadata_string(audio_path, String::from("genre"));
-            if let Some(counting) = mut_map.get_mut(&metadata) {
-                let mut_counting = Rc::get_mut(counting).unwrap();
-                *mut_counting += 1;
-            } else {
-                mut_map.insert(metadata, Rc::new(1));
-            }
+            match metadata_parser.get_metadata_string(audio_path, tag) {
+                Ok(metadata) => {
+                    if let Some(counting) = mut_map.get_mut(&metadata) {
+                        let mut_counting = Rc::get_mut(counting).unwrap();
+                        *mut_counting += 1;
+                    } else {
+                        mut_map.insert(metadata, Rc::new(1));
+                    }
+                }
+                Err(error) => {
+                    mut_errors.push(error);
+                }
+            };
         }
     };
     visitor::visit_mut(path, &mut closure_sample_aggr).unwrap();
-    sample_aggr
+    (sample_aggr, errors)
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use audio_player::MetadataParserBuilder;
+    use std::error::Error;
     use std::fs::{self, File};
     use std::io::Read;
     use std::io::Seek;
@@ -41,17 +53,19 @@ mod tests {
     use tempfile::NamedTempFile;
     use tempfile::TempPath;
 
-    use super::*;
-
     struct MetadataParserMock {}
 
     impl MetadataParserWrapper for MetadataParserMock {
-        fn get_metadata_string(&self, audio_path: &Path, _target_metadata: String) -> String {
+        fn get_metadata_string(
+            &self,
+            audio_path: &Path,
+            _target_metadata: &String,
+        ) -> Result<String, Box<dyn Error>> {
             let mut buffer: String = String::new();
             println!("reading test file {:?}", audio_path);
             let mut audio = File::open(audio_path).unwrap();
             audio.read_to_string(&mut buffer).unwrap();
-            buffer
+            Ok(buffer)
         }
 
         fn print_metadata(&self, audio_path: &Path) {}
@@ -129,6 +143,7 @@ mod tests {
         let metal_content = "Metal";
         let rock_content = "Rock";
         let empty_content = "Ska";
+        let tag = String::from("who cares");
         let root_dir = Builder::new().tempdir_in("./").unwrap();
         let root_path = root_dir.into_path();
         let (root_audio, root_dir) = create_temp_file(&root_path, false, metal_content);
@@ -138,7 +153,7 @@ mod tests {
         // let sub_sub_dir = clone_sub_dir.clone().as_path();
         let (sub_audio2, sub_dir2) = create_temp_file(&root_path, true, empty_content);
         let metadata_parser = Box::new(MetadataParserMock {});
-        let result_aggr_genre = aggregate_by_sample_rate(&root_path, metadata_parser);
+        let (result_aggr_genre, _) = aggregate_by(&root_path, metadata_parser, &tag);
         assert_eq!(result_aggr_genre.len(), 3);
 
         // FIXME for some reason I need to force drop audio file before removing dir in this test case. but not in it_with_temp_files
@@ -154,10 +169,11 @@ mod tests {
     #[test]
     #[ignore]
     fn it_aggregate_genre() {
+        let tag = String::from("who cares");
         //  let mut tmpfile: File = tempfile::tempfile().unwrap();
         let path = Path::new("D:/Documents/prog/rust/mp3Player/audio-project/audio-manager/assets");
         let metadata_parser = MetadataParserBuilder::build();
-        let result_aggr_genre = aggregate_by_sample_rate(path, metadata_parser);
+        let (result_aggr_genre, _) = aggregate_by(path, metadata_parser, &tag);
         assert_eq!(result_aggr_genre.len(), 3)
     }
 }

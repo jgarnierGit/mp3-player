@@ -5,13 +5,18 @@ use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::{Hint, ProbeResult};
 
+/// get Symphonia probe for audio file exploitation
+///
+/// # Panics
+/// will panic if path point to an unrecognized symphonia audio file, or if file doesn't have extension at all
+///
 pub fn get_probe(music_path: &Path) -> Result<ProbeResult> {
     // Create a hint to help the format registry guess what format reader is appropriate.
     let mut hint = Hint::new();
     if let Some(ext) = music_path.extension() {
         if let Some(ext_str) = ext.to_str() {
             hint.with_extension(ext_str);
-            println!("hint is {:?}", hint);
+            //  println!("hint is {:?}", hint);
         } else {
             // TODO add to a errorlog
             panic!("invalid format {:?}", ext);
