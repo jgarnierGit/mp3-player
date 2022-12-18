@@ -14,6 +14,7 @@
 
 use log::warn;
 use std::path::Path;
+use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::{DecoderOptions, FinalizeResult, CODEC_TYPE_NULL};
 use symphonia::core::errors::{Error, Result};
 use symphonia::core::formats::{FormatReader, Track};
@@ -29,6 +30,72 @@ use super::output;
 struct PlayTrackOptions {
     track_id: u32,
     seek_ts: u64,
+}
+
+pub fn get_file_samples(audio_path: &Path) -> Option<Box<Vec<f32>>> {
+    let mut probed = match commons::get_probe(audio_path) {
+        Ok(probe) => probe,
+        Err(err) => panic!("Unsupported format {}", err),
+    };
+    let mut format = probed.format;
+    // Get the default track.
+    let track = format.default_track().unwrap();
+    let track_id = track.id;
+    let decode_opts: DecoderOptions = Default::default();
+    // Create a decoder for the track.
+    let mut decoder = symphonia::default::get_codecs()
+        .make(&track.codec_params, &decode_opts)
+        .expect("unsupported codec");
+    let mut sample_buf = None;
+    let mut sample_array = Box::new(Vec::new());
+
+    let result = loop {
+        // Get the next packet from the format reader.
+        let packet = match format.next_packet() {
+            Ok(packet) => packet,
+            Err(err) => break Err(err),
+        };
+
+        // If the packet does not belong to the selected track, skip it.
+        if packet.track_id() != track_id {
+            continue;
+        }
+        // Decode the packet into audio samples, ignoring any decode errors.
+        match decoder.decode(&packet) {
+            Ok(audio_buf) => {
+                // The decoded audio samples may now be accessed via the audio buffer if per-channel
+                // slices of samples in their native decoded format is desired. Use-cases where
+                // the samples need to be accessed in an interleaved order or converted into
+                // another sample format, or a byte buffer is required, are covered by copying the
+                // audio buffer into a sample buffer or raw sample buffer, respectively. In the
+                // example below, we will copy the audio buffer into a sample buffer in an
+                // interleaved order while also converting to a f32 sample format.
+
+                // If this is the *first* decoded packet, create a sample buffer matching the
+                // decoded audio buffer format.
+                if sample_buf.is_none() {
+                    // Get the audio buffer specification.
+                    let spec = *audio_buf.spec();
+
+                    // Get the capacity of the decoded buffer. Note: This is capacity, not length!
+                    let duration = audio_buf.capacity() as u64;
+
+                    // Create the f32 sample buffer.
+                    sample_buf = Some(SampleBuffer::<f32>::new(duration, spec));
+                }
+                // Copy the decoded audio buffer into the sample buffer in an interleaved format.
+                if let Some(buf) = &mut sample_buf {
+                    buf.copy_interleaved_ref(audio_buf);
+
+                    sample_array.extend_from_slice(buf.samples());
+                }
+            }
+            Err(err) => break Err(err),
+        }
+    };
+    // Return if a fatal error occured.
+    ignore_end_of_stream_error(result).unwrap();
+    Some(sample_array)
 }
 
 pub fn play_track(music_path: &Path) -> Result<i32> {

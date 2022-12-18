@@ -71,6 +71,9 @@ mod tests {
         fn print_metadata(&self, audio_path: &Path) {}
         fn print_tags(&self, audio_path: &Path) {}
         fn print_visuals(&self, audio_path: &Path) {}
+        fn get_file_samples(&self, audio_path: &Path) -> Option<Box<Vec<f32>>> {
+            None
+        }
     }
 
     /// TODO extract all this logic into a common tester package.

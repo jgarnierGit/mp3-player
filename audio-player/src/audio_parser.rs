@@ -15,6 +15,8 @@ pub trait MetadataParserWrapper {
     ) -> Result<String, Box<dyn Error>>;
     /// DEBUG : Print audio file thumbnail
     fn print_visuals(&self, audio_path: &Path);
+    /// TODO : try to extract this to a proper Wrapper
+    fn get_file_samples(&self, audio_path: &Path) -> Option<Box<Vec<f32>>>;
 }
 
 pub mod metadata_parser_builder {
@@ -51,6 +53,9 @@ pub mod metadata_parser_builder {
         fn print_visuals(&self, audio_path: &Path) {
             self.wrapped.print_visuals(audio_path);
         }
+        fn get_file_samples(&self, audio_path: &Path) -> Option<Box<Vec<f32>>> {
+            self.wrapped.get_file_samples(audio_path)
+        }
     }
 }
 
@@ -72,5 +77,8 @@ impl MetadataParserWrapper for SymphoniaWrapper {
     }
     fn print_visuals(&self, _audio_path: &Path) {
         //   symphonia_wrapper::print_visuals(audio_path);
+    }
+    fn get_file_samples(&self, audio_path: &Path) -> Option<Box<Vec<f32>>> {
+        symphonia_wrapper::get_file_samples(audio_path)
     }
 }

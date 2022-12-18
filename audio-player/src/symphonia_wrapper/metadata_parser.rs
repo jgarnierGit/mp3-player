@@ -27,6 +27,7 @@ pub fn get_metadata_string(
     // Prefer metadata that's provided in the container format, over other tags found during the
     // probe operation.
     let tag_content: String;
+    // try finding target metadata in tags :
     if let Some(metadata_rev) = probed.format.metadata().current() {
         tag_content = get_tag_string(metadata_rev.tags(), &target_metadata);
     } else if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
