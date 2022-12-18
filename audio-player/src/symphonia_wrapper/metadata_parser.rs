@@ -1,4 +1,5 @@
 use symphonia::core::{
+    codecs::CodecParameters,
     formats::{Cue, Track},
     meta::{ColorMode, StandardTagKey, Tag, Value, Visual},
     probe::ProbeResult,
@@ -27,6 +28,12 @@ pub fn get_metadata_string(
     // Prefer metadata that's provided in the container format, over other tags found during the
     // probe operation.
     let tag_content: String;
+
+    // try find target metadata in format :
+    if let Some(format_item) = get_tracks_string(probed.format.tracks(), &target_metadata) {
+        return Ok(format_item);
+    }
+
     // try finding target metadata in tags :
     if let Some(metadata_rev) = probed.format.metadata().current() {
         tag_content = get_tag_string(metadata_rev.tags(), &target_metadata);
@@ -61,13 +68,6 @@ fn get_tag_string(tags: &[Tag], target_metadata: &String) -> String {
     String::from("")
 }
 
-fn get_stantard_tag_key(target_metadata: &String) -> Option<StandardTagKey> {
-    match target_metadata.as_str() {
-        "genre" => Some(StandardTagKey::Genre),
-        _ => None,
-    }
-}
-
 fn get_matching_tag<'a>(tag: &'a Tag, target_metadata: &String) -> Option<&'a Value> {
     if let Some(std_key) = tag.std_key {
         if let Some(target_key) = get_stantard_tag_key(target_metadata) {
@@ -77,6 +77,13 @@ fn get_matching_tag<'a>(tag: &'a Tag, target_metadata: &String) -> Option<&'a Va
         }
     }
     None
+}
+
+fn get_stantard_tag_key(target_metadata: &String) -> Option<StandardTagKey> {
+    match target_metadata.as_str() {
+        "genre" => Some(StandardTagKey::Genre),
+        _ => None,
+    }
 }
 
 fn print_format(probed: &mut ProbeResult) {
@@ -101,6 +108,38 @@ fn print_format(probed: &mut ProbeResult) {
     print_cues(probed.format.cues());
     println!(":");
     println!();
+}
+
+fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<String> {
+    if tracks.is_empty() {
+        return None;
+    }
+    /*for (idx, track) in tracks.iter().enumerate() {
+        let params = &track.codec_params;
+
+    }*/
+    let track_content = if let Some(track) = tracks.first() {
+        let params = &track.codec_params;
+        match target_metadata.as_str() {
+            "duration" => get_duration(params),
+            // TODO implement other track tags
+            _ => None,
+        }
+    } else {
+        None
+    };
+    track_content
+}
+
+fn get_duration(params: &CodecParameters) -> Option<String> {
+    if let Some(n_frames) = params.n_frames {
+        if let Some(tb) = params.time_base {
+            return Some(fmt_time(n_frames, tb));
+        } else {
+            return Some(n_frames.to_string());
+        }
+    }
+    None
 }
 
 fn print_tracks(tracks: &[Track]) {

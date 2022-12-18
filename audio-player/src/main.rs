@@ -15,14 +15,17 @@ fn main() {
     println!("trying to fetch {:?}", music_path.display());
     // symphonia_wrapper::parse(music_path);
     let code = 0;
+    let tag = String::from("duration");
+    let duration_file = symphonia_wrapper::get_metadata_string(music_path, &tag).unwrap();
     let start = Instant::now();
     let samples_from_file = symphonia_wrapper::get_file_samples(music_path);
     let duration = start.elapsed();
     if let Some(samples) = samples_from_file {
         println!(
-            "print my samples : {} computed in {:?}",
+            "print my samples : {} computed in {:?} for a file duration of {}",
             samples.len(),
-            duration
+            duration,
+            duration_file
         );
     }
 
