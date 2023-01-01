@@ -14,8 +14,18 @@ fn main() {
     .unwrap();
     count_music(path);
     let tag = String::from("genre");
-    let (res_metadata_aggr, errs) = metadata_aggregator::aggregate_by(path, metadata_parser, &tag);
-    println!("metadatas by genre{:?}", res_metadata_aggr);
+    let frame_rate_tag = String::from("frameRate");
+    let channel_tag = String::from("channels");
+    let (res_metadata_aggr, errs) =
+        metadata_aggregator::aggregate_by(path, &metadata_parser, &channel_tag);
+    println!("metadatas aggregated {:?}", res_metadata_aggr);
+    println!("errors {:?}", errs);
+    //get songs with 1 channels only
+    let value_to_filter = "1";
+    let (res_metadata_filter, errs) =
+        metadata_aggregator::filter_by(path, &metadata_parser, &channel_tag, value_to_filter);
+    // TODO add an iterator layer logic for haevy results.
+    println!("metadatas filtered {:?}", res_metadata_filter);
     println!("errors {:?}", errs);
 }
 

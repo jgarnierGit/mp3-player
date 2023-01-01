@@ -122,6 +122,8 @@ fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<Strin
         let params = &track.codec_params;
         match target_metadata.as_str() {
             "duration" => get_duration(params),
+            "frameRate" => get_sample_rate(params),
+            "channels" => get_channels(params),
             // TODO implement other track tags
             _ => None,
         }
@@ -129,6 +131,22 @@ fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<Strin
         None
     };
     track_content
+}
+
+
+/// TODO returns numeric
+fn get_sample_rate(params: &CodecParameters) -> Option<String> {
+    match params.sample_rate {
+        Some(rate) => Some(rate.to_string()),
+        None => None,
+    }
+}
+/// TODO returns numeric
+fn get_channels(params: &CodecParameters) -> Option<String> {
+    match params.channels {
+        Some(info) => Some(info.count().to_string()),
+        None => None,
+    }
 }
 
 fn get_duration(params: &CodecParameters) -> Option<String> {

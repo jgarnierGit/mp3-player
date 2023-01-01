@@ -7,7 +7,7 @@ use crate::audio_library::visitor;
 
 pub fn aggregate_by(
     path: &Path,
-    metadata_parser: Box<dyn MetadataParserWrapper>,
+    metadata_parser: &Box<dyn MetadataParserWrapper>,
     tag: &String,
 ) -> (Rc<HashMap<String, Rc<usize>>>, Rc<Vec<Box<dyn Error>>>) {
     let mut sample_aggr: Rc<HashMap<String, Rc<usize>>> = Rc::new(HashMap::new());
@@ -28,6 +28,8 @@ pub fn aggregate_by(
                     }
                 }
                 Err(error) => {
+                    // TODO aggregate audio_path in order to identify file in error.
+                    // TODO try to fix lib if possible
                     mut_errors.push(error);
                 }
             };
@@ -35,6 +37,48 @@ pub fn aggregate_by(
     };
     visitor::visit_mut(path, &mut closure_sample_aggr).unwrap();
     (sample_aggr, errors)
+}
+
+/// By default, filters and get music path.
+pub fn filter_by(
+    path: &Path,
+    metadata_parser: &Box<dyn MetadataParserWrapper>,
+    tag: &String,
+    value: &str,
+) -> (
+    Rc<HashMap<String, Rc<Vec<String>>>>,
+    Rc<Vec<Box<dyn Error>>>,
+) {
+    let mut filtered: Rc<HashMap<String, Rc<Vec<String>>>> = Rc::new(HashMap::new());
+    let mut errors: Rc<Vec<Box<dyn Error>>> = Rc::new(Vec::new());
+
+    let mut closure_sample_filter = {
+        let mut_map = Rc::get_mut(&mut filtered).unwrap();
+        let mut_errors = Rc::get_mut(&mut errors).unwrap();
+        move |_dir: &DirEntry, audio_path: &Path| {
+            match metadata_parser.get_metadata_string(audio_path, tag) {
+                Ok(metadata) if metadata.as_str() == value => {
+                    if let Some(filtered_sound) = mut_map.get_mut(&metadata) {
+                        let mut_filtered_sound = Rc::get_mut(filtered_sound).unwrap();
+                        mut_filtered_sound.push(String::from(audio_path.to_str().unwrap()));
+                    } else {
+                        mut_map.insert(
+                            metadata,
+                            Rc::new(vec![String::from(audio_path.to_str().unwrap())]),
+                        );
+                    }
+                }
+                Ok(_) => (),
+                Err(error) => {
+                    // TODO aggregate audio_path in order to identify file in error.
+                    // TODO try to fix lib if possible
+                    mut_errors.push(error);
+                }
+            };
+        }
+    };
+    visitor::visit_mut(path, &mut closure_sample_filter).unwrap();
+    (filtered, errors)
 }
 
 #[cfg(test)]
@@ -68,12 +112,16 @@ mod tests {
             Ok(buffer)
         }
 
-        fn print_metadata(&self, audio_path: &Path) {}
-        fn print_tags(&self, audio_path: &Path) {}
-        fn print_visuals(&self, audio_path: &Path) {}
-        fn get_file_samples(&self, audio_path: &Path) -> Option<Box<Vec<f32>>> {
+        fn print_metadata(&self, _audio_path: &Path) {}
+        fn print_tags(&self, _audio_path: &Path) {}
+        fn print_visuals(&self, _audio_path: &Path) {}
+        fn get_file_samples(&self, _audio_path: &Path) -> Option<Box<Vec<f32>>> {
             None
         }
+    }
+
+    fn build_metadata_parser_mock() -> Box<dyn MetadataParserWrapper> {
+        Box::new(MetadataParserMock {})
     }
 
     /// TODO extract all this logic into a common tester package.
@@ -155,8 +203,8 @@ mod tests {
         //  let clone_sub_dir = sub_dir.unwrap();
         // let sub_sub_dir = clone_sub_dir.clone().as_path();
         let (sub_audio2, sub_dir2) = create_temp_file(&root_path, true, empty_content);
-        let metadata_parser = Box::new(MetadataParserMock {});
-        let (result_aggr_genre, _) = aggregate_by(&root_path, metadata_parser, &tag);
+        let metadata_parser = build_metadata_parser_mock();
+        let (result_aggr_genre, _) = aggregate_by(&root_path, &metadata_parser, &tag);
         assert_eq!(result_aggr_genre.len(), 3);
 
         // FIXME for some reason I need to force drop audio file before removing dir in this test case. but not in it_with_temp_files
@@ -169,6 +217,37 @@ mod tests {
         drop_temp_dir(sub_dir2);
         drop_temp_dir(root_dir);
     }
+
+    #[test]
+    fn it_filters_with_mock() {
+        let metal_content = "Metal";
+        let rock_content = "Rock";
+        let empty_content = "Ska";
+        let tag = String::from("who cares");
+        let root_dir = Builder::new().tempdir_in("./").unwrap();
+        let root_path = root_dir.into_path();
+        let (root_audio, root_dir) = create_temp_file(&root_path, false, metal_content);
+        let (root_audio2, _) = create_temp_file(&root_path, false, metal_content);
+        let (sub_audio, sub_dir) = create_temp_file(&root_path, true, rock_content);
+        //  let clone_sub_dir = sub_dir.unwrap();
+        // let sub_sub_dir = clone_sub_dir.clone().as_path();
+        let (sub_audio2, sub_dir2) = create_temp_file(&root_path, true, empty_content);
+        let metadata_parser = build_metadata_parser_mock();
+        let (result_aggr_genre, _) = filter_by(&root_path, &metadata_parser, &tag, metal_content);
+        assert_eq!(result_aggr_genre.len(), 1);
+        assert_eq!(result_aggr_genre.get(metal_content).unwrap().len(), 2);
+
+        // FIXME for some reason I need to force drop audio file before removing dir in this test case. but not in it_with_temp_files
+        // investigate this behavior. (not related to aggregate_by_sample_rate)
+        drop(root_audio);
+        drop(root_audio2);
+        drop(sub_audio);
+        drop(sub_audio2);
+        drop_temp_dir(sub_dir);
+        drop_temp_dir(sub_dir2);
+        drop_temp_dir(root_dir);
+    }
+
     #[test]
     #[ignore]
     fn it_aggregate_genre() {
@@ -176,7 +255,7 @@ mod tests {
         //  let mut tmpfile: File = tempfile::tempfile().unwrap();
         let path = Path::new("D:/Documents/prog/rust/mp3Player/audio-project/audio-manager/assets");
         let metadata_parser = MetadataParserBuilder::build();
-        let (result_aggr_genre, _) = aggregate_by(path, metadata_parser, &tag);
+        let (result_aggr_genre, _) = aggregate_by(path, &metadata_parser, &tag);
         assert_eq!(result_aggr_genre.len(), 3)
     }
 }
