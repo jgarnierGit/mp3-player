@@ -1,4 +1,5 @@
 use std::path::Path;
+mod pixel_buf;
 mod spectrum_analyzer;
 use crate::spectrum_analyzer::*;
 
@@ -17,7 +18,7 @@ fn main() {
             &beats_formatted,
         )
         .unwrap();
-        draw_into_window(
+        draw_static_into_window(
             path,
             music_name_stereo,
             &samples_formatted,

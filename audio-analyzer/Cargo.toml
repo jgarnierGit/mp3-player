@@ -7,6 +7,5 @@ edition = "2021"
 
 [dependencies]
 audio-player = { path = "../audio-player"}
-audio-visualizer = { path = "../../../../audio-visualizer"}
 minifb = "0.23.0" # window mainly for PoC
 plotters = "0.3.4" # charts

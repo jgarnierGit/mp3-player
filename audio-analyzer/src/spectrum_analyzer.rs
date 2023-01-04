@@ -1,19 +1,20 @@
 use std::borrow::{Borrow, BorrowMut};
-
 use std::path::Path;
 
+use crate::pixel_buf::PixelBuf;
 use audio_player::MetadataParserBuilder;
-use audio_visualizer::dynamic::window_top_btm::pixel_buf::PixelBuf;
 use minifb::{Key, Window, WindowOptions};
 use plotters::backend::{BGRXPixel, PixelFormat};
+use plotters::chart::ChartState;
+use plotters::coord::types::RangedCoordf64;
 use plotters::coord::Shift;
 use plotters::drawing::IntoDrawingArea;
 use plotters::prelude::*;
 use plotters::series::LineSeries;
 use plotters::style::{BLUE, RED};
 
-const WIDTH: usize = 1024; // 640;
-const HEIGHT: usize = 768; //360;
+const WIDTH: usize = 1024;
+const HEIGHT: usize = 768;
 
 pub fn analyze_samples(
     path: &Path,
@@ -73,14 +74,35 @@ pub fn analyze_samples(
     None
 }
 
-pub fn draw_into_window(
-    path: &Path,
-    music_name: &str,
+pub fn draw_static_into_window(
+    _path: &Path,
+    _music_name: &str,
     audio_samples: &Box<Vec<f32>>,
     beats: &Vec<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let (mut window, mut pixel_buf, _chart_state) = setup_window();
+
+    println!("done into drawing");
+    let root_drawing_area = get_drawing_area(pixel_buf.borrow_mut());
+    generate_static_spectrum(&root_drawing_area, audio_samples, beats)?;
+    root_drawing_area
+        .present()
+        .expect("Unable to write result to buffer ??");
+    drop(root_drawing_area);
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        window
+            .update_with_buffer(pixel_buf.borrow(), WIDTH, HEIGHT)
+            .unwrap();
+    }
+    Ok(())
+}
+
+fn setup_window() -> (
+    Window,
+    PixelBuf,
+    ChartState<Cartesian2d<RangedCoordf64, RangedCoordf64>>,
+) {
     let mut pixel_buf = PixelBuf(vec![0_u32; WIDTH * HEIGHT]);
-    let mut raw_buff = vec![0 as u8; WIDTH * HEIGHT * BGRXPixel::PIXEL_SIZE];
     let mut window = Window::new(
         "Test - ESC to exit",
         WIDTH,
@@ -91,28 +113,31 @@ pub fn draw_into_window(
         panic!("{}", e);
     });
 
+    let x_min: f64 = 0.0;
+    let x_max: f64 = 1.0;
+    let y_min: f64 = 0.0;
+    let y_max: f64 = 1.0;
+
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
-    println!(
-        "{},{}",
-        (WIDTH * HEIGHT) as usize * BGRXPixel::PIXEL_SIZE,
-        raw_buff.len()
-    );
-
     let root_drawing_area = get_drawing_area(pixel_buf.borrow_mut());
-    println!("done into drawing");
-    generate_static_spectrum(&root_drawing_area, audio_samples, beats)?;
-    root_drawing_area
-        .present()
-        .expect("Unable to write result to buffer ??");
-    drop(root_drawing_area);
+    // renders a first frame in order to get an initial chartState for dynamic rendering reset
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        window
-            .update_with_buffer(pixel_buf.borrow(), WIDTH, HEIGHT)
-            .unwrap();
-    }
-    Ok(())
+    let mut chart = ChartBuilder::on(&root_drawing_area)
+        .caption("Bitmap Example", ("sans-serif", 30))
+        .margin(10)
+        .set_label_area_size(LabelAreaPosition::Left, 40)
+        .set_label_area_size(LabelAreaPosition::Bottom, 40)
+        .build_cartesian_2d(x_min..x_max, y_min..y_max)
+        .expect("Could not build chart");
+    chart
+        .configure_mesh()
+        //.disable_mesh()
+        .draw()
+        .expect("Could not draw initial chart");
+    let chart_state = chart.into_chart_state();
+    drop(root_drawing_area);
+    (window, pixel_buf, chart_state)
 }
 
 fn get_drawing_area(pixel_buf: &mut [u8]) -> DrawingArea<BitMapBackend<BGRXPixel>, Shift> {
@@ -149,11 +174,11 @@ fn generate_static_spectrum<T>(
     root: &DrawingArea<BitMapBackend<T>, Shift>,
     audio_samples: &Box<Vec<f32>>,
     beats: &Vec<f64>,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> Result<(), String>
 where
     T: PixelFormat,
 {
-    root.fill(&WHITE)?;
+    root.fill(&WHITE).expect("Could not reset background color");
     let x_max = audio_samples.len() as f64;
     let x_min = 0.0;
     if let (Some(y_min), Some(y_max)) = (
@@ -166,26 +191,34 @@ where
             .margin(10)
             .set_label_area_size(LabelAreaPosition::Left, 40)
             .set_label_area_size(LabelAreaPosition::Bottom, 40)
-            .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-        chart.configure_mesh().disable_mesh().draw()?;
-        //let cat_path = path.join("cat.png");
-        // let (w, h) = chart.plotting_area().dim_in_pixel();
+            .build_cartesian_2d(x_min..x_max, y_min..y_max)
+            .expect("Could not build chart");
+        let chart_state = chart
+            .configure_mesh()
+            .disable_mesh()
+            .draw()
+            .expect("Could not draw initial chart");
 
-        chart.draw_series(LineSeries::new(
-            audio_samples
-                .iter()
-                .enumerate()
-                .map(|(x, y)| (x as f64, *y)),
-            &RED,
-        ))?;
+        chart
+            .draw_series(LineSeries::new(
+                audio_samples
+                    .iter()
+                    .enumerate()
+                    .map(|(x, y)| (x as f64, *y)),
+                &RED,
+            ))
+            .expect("could not draw spectrum series");
         //
-        chart.draw_series(
-            beats
-                .iter()
-                .map(|t| Polygon::new([(*t, y_max), (*t, y_min)], BLUE.stroke_width(1).filled())),
-        )?;
+        chart
+            .draw_series(
+                beats.iter().map(|t| {
+                    Polygon::new([(*t, y_max), (*t, y_min)], BLUE.stroke_width(1).filled())
+                }),
+            )
+            .expect("could not draw Beat series");
+        return Ok(chart_state);
     }
-    Ok(())
+    Err(String::from("cannot compute x_min, y_min"))
 }
 
 fn find_smallest_step<T>(samples: &[T]) -> Option<T>
