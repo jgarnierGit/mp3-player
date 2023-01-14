@@ -93,6 +93,8 @@ mod tests {
     use std::io::Write;
     use std::path::Path;
     use std::path::PathBuf;
+    use std::sync::mpsc::Sender;
+    use std::thread::{self, JoinHandle};
     use tempfile::Builder;
     use tempfile::NamedTempFile;
     use tempfile::TempPath;
@@ -117,6 +119,14 @@ mod tests {
         fn print_visuals(&self, _audio_path: &Path) {}
         fn get_file_samples(&self, _audio_path: &Path) -> Option<Box<Vec<f32>>> {
             None
+        }
+        fn get_live_sample(
+            &self,
+            _audio_path: &Path,
+            _live_sample: Sender<(usize, usize, Vec<f32>)>,
+            _live_sample_written: &mut Rc<usize>,
+        ) -> JoinHandle<()> {
+            thread::spawn(|| {})
         }
     }
 

@@ -124,6 +124,9 @@ fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<Strin
             "duration" => get_duration(params),
             "frameRate" => get_sample_rate(params),
             "channels" => get_channels(params),
+            "frameNumber" => get_frame_number(params),
+            "bit_per_sample_enc" => get_bit_per_sample_encoded(params),
+            "bit_per_sample_dec" => get_bit_per_sample_decoded(params),
             // TODO implement other track tags
             _ => None,
         }
@@ -133,6 +136,29 @@ fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<Strin
     track_content
 }
 
+/// TODO and make a generic method based on what I learned
+fn get_track_numeric(tracks: &[Track], target_metadata: &String) {}
+
+fn get_bit_per_sample_encoded(params: &CodecParameters) -> Option<String> {
+    match params.bits_per_coded_sample {
+        Some(bits) => Some(bits.to_string()),
+        None => None,
+    }
+}
+fn get_bit_per_sample_decoded(params: &CodecParameters) -> Option<String> {
+    match params.bits_per_sample {
+        Some(bits) => Some(bits.to_string()),
+        None => None,
+    }
+}
+
+/// Get total audio file frame count
+fn get_frame_number(params: &CodecParameters) -> Option<String> {
+    match params.n_frames {
+        Some(rate) => Some(rate.to_string()),
+        None => None,
+    }
+}
 
 /// TODO returns numeric
 fn get_sample_rate(params: &CodecParameters) -> Option<String> {

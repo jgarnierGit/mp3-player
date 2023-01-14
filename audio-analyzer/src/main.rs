@@ -1,34 +1,90 @@
+use audio_player::MetadataParserBuilder;
 use std::path::Path;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 mod pixel_buf;
 mod spectrum_analyzer;
 use crate::spectrum_analyzer::*;
+use audio_player::playTrack;
+use std::thread::{self};
 
 fn main() {
     let path = Path::new("D:/Documents/prog/rust/mp3Player/audio-project/audio-analyzer/assets");
-    let music_name_stereo = "Anthrazit.wav";
+    let music_name_stereo = "Turn Down the Lights_sample_2.wav";
     let music_name_mono = "Belfast_Child_mono.mp3";
-    // TODO open this in dedicated thread
-    if let Some((samples_formatted, beats_formatted)) =
-        analyze_samples(path, music_name_stereo, &(DATA.to_vec()))
-    {
-        draw_into_png(
-            path,
-            music_name_stereo,
-            &samples_formatted,
-            &beats_formatted,
-        )
-        .unwrap();
-        draw_static_into_window(
-            path,
-            music_name_stereo,
-            &samples_formatted,
-            &beats_formatted,
-        )
-        .unwrap();
+
+    let metadata_parser = MetadataParserBuilder::build();
+
+    if let Some((
+        samples_formatted,
+        beats_formatted,
+        _frame_rate,
+        _channel_nb,
+        frame_number,
+        _bit_enc,
+        _bit_dec,
+    )) = analyze_samples(
+        &metadata_parser,
+        path,
+        music_name_stereo,
+        &(TURN_SAMP_2.to_vec()),
+    ) {
+        println!("frame number = {}", frame_number);
+        live_play(
+            path.to_path_buf(),
+            music_name_stereo.clone(),
+            samples_formatted,
+            beats_formatted,
+        );
     }
     std::process::exit(0)
 }
 
+fn live_play(
+    path: PathBuf,
+    music_name: &'static str,
+    samples_formatted: Box<Vec<f32>>,
+    beats_formatted: Vec<f64>,
+) {
+    let music_path = path.clone();
+    let music_path_2 = path.clone();
+    let sound_sync = Arc::new(Mutex::new(false));
+    let ts_sound_sync = Arc::new(Mutex::new((0_u64, (0_u64, 0_u64, 0_f64))));
+    let sound_sync_listener = Arc::clone(&sound_sync);
+    let ts_sync_emit = Arc::clone(&ts_sound_sync);
+    let player_t = thread::spawn(move || {
+        playTrack(
+            music_path.join(music_name).as_path(),
+            ts_sync_emit,
+            Arc::clone(&sound_sync_listener),
+        )
+        .unwrap();
+        let mut sound_sync_finished = sound_sync_listener
+            .try_lock()
+            .expect("couldn't lock at end of play");
+        *sound_sync_finished = false;
+    });
+    let sound_sync_launcher = Arc::clone(&sound_sync);
+    let ts_sync_listen = Arc::clone(&ts_sound_sync);
+    let windows_t = thread::spawn(move || {
+        draw_live_cursor_into_window(
+            music_path_2.as_path(),
+            music_name,
+            &samples_formatted,
+            &beats_formatted,
+            ts_sync_listen,
+            sound_sync_launcher,
+        )
+        .unwrap();
+    });
+    player_t.join().unwrap();
+    windows_t.join().unwrap();
+}
+
+const TURN_SAMP_2: [f64; 15] = [
+    1.545329, 1.862404, 2.179478, 2.496553, 2.813628, 3.157415, 3.474014, 3.790612, 4.107211,
+    4.423810, 5.412880, 6.386621, 7.026213, 7.999365, 8.638776,
+];
 const DATA: [f64; 833] = [
     1.779116, 2.229682, 2.680272, 3.050453, 3.432245, 3.814036, 4.195827, 4.696281, 5.208322,
     5.720386, 6.073787, 6.438798, 6.803810, 7.168821, 7.619388, 8.081565, 8.543741, 9.017846,
