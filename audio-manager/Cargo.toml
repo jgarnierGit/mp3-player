@@ -7,4 +7,6 @@ edition = "2021"
 
 [dependencies]
 audio-player = { path = "../audio-player"}
+clap = { version = "4.1.1", features = ["derive"] }
+log = "0.4.17"
 tempfile = "3.3.0"

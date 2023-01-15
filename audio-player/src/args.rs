@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use clap::ArgAction::Append;
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::Parser;
 
 #[derive(Parser)]
 #[command(name="J.Garnier", author, version, about, long_about = None)]
 pub struct Cli {
     /// Audio path in absolute path
-    #[arg(short, long)]
+    #[arg(short, long, required = true)]
     pub input: PathBuf,
     /// Play audio
     #[arg(short, long)]
