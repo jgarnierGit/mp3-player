@@ -1,6 +1,7 @@
 # Audio-analyzer crate
 
-Spectrum analysis logic, for now focused on BPM computation
+Spectrum analysis logic, for now focused on BPM computation.
+
 Provide a visual debug tool chainable to audio player
 
 # How to use
@@ -34,6 +35,7 @@ It is very painful experience to achieve mp3 spectrum analysis. Main reason is d
     			* libavcodec-57.dll
 
 From there you have no choice but go get and compile the [ffmpeg sources](https://ffmpeg.org/download.html).
+
 Or give up and convert your mp3 into wav to use dependency-free aubio executable .
  
  ## Mac environment
