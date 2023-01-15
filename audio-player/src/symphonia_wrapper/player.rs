@@ -102,9 +102,10 @@ pub fn get_file_samples(audio_path: &Path) -> Option<Box<Vec<f32>>> {
     Some(sample_array)
 }
 
+/// TODO create same method with an Arc<Mutex> to guarantee sync with audio player
 pub fn get_live_sample(
     audio_path: &Path,
-    live_sample: Sender<(usize, usize, Vec<f32>)>, // FIXME with an Arc<Mutex> to avoid desync
+    live_sample: Sender<(usize, usize, Vec<f32>)>,
     live_sample_written: &mut Rc<usize>,
 ) -> JoinHandle<()> {
     let audio_p = audio_path.clone().to_owned();
@@ -203,8 +204,8 @@ where
 
 pub fn play_track(
     music_path: &Path,
-    live_sample: Arc<Mutex<(u64, (u64, u64, f64))>>,
-    start_play: Arc<Mutex<bool>>,
+    live_sample: Arc<Mutex<(u64, (u64, u64, f64))>>, //TODO optionalize those param
+    start_play: Arc<Mutex<bool>>,                    //TODO optionalize those param
 ) -> Result<i32> {
     let probed = match commons::get_probe(music_path) {
         Ok(probe) => probe,
