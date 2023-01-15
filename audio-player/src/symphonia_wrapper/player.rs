@@ -1,4 +1,5 @@
 //!
+//! Basic player, inspired by symphonia-player & symphonia getting-started
 //! known limitation :
 //! I had to add a hardcoded 48000Hz to sample spec in order to play it successfully on windows.(current configuration is : 2 canals, 24bits, 48000Hz)
 //! It is not really noticable as most music rate are near this one, but still, a resampling would be great (as all player does I guess)

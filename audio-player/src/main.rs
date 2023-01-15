@@ -1,4 +1,3 @@
-//! Basic player, inspired by symphonia-player & symphonia getting-started
 mod symphonia_wrapper;
 use args::Cli;
 use log::error;
