@@ -6,13 +6,28 @@ Provide a visual debug tool chainable to audio player
 
 # How to use
 
-BPM computation can be obtained by external tools. For testing I personaly used [Plotters](https://aubio.org/download).
+```bash
+# <BEAT_DETECTION> i.e Beat detection algorithm i.e ["Energy", "Hfc", "Complex", "Phase", "WPhase", "SpecDiff", "Kl", "Mkl", "SpecFlux"] [default: SpecFlux]
+# Display static spectrum
+audio-analyzer -i /path/to/file -b <BEAT_DETECTION> -v
 
-## Linux environment
+# Play audio & display live spectrum
+audio-analyzer -i /path/to/file -b <BEAT_DETECTION> -l
+
+# Generate spectrum as PNG into target <OUTPUT> i.e /path/to/img.png
+audio-analyzer -i /path/to/file -b <BEAT_DETECTION> -s -o <OUTPUT>
+
+```
+
+## Technical dev notes
+
+BPM computation can be obtained by external tools. In first iteration I used [aubio](https://aubio.org/download).
+
+### Linux environment
 
 installation and usage is quite straight-forward.
 
-## Windows environment
+### Windows environment
 
 [TL;DR]
 
@@ -26,7 +41,7 @@ installation and usage is quite straight-forward.
 
 It is very painful experience to achieve mp3 spectrum analysis. Main reason is describe here [FR - "ffmpeg pour windows ca va couper"](https://linuxfr.org/users/roger21/journaux/ffmpeg-pour-windows-ca-va-couper).
 
-### More details 
+#### More details 
 
     aubio-0.4.6-win64-ffmpeg.zip require "Cantor" 3.4.12 dll ffmpeg version max whose are: 
     			* libavutil-55.dll
@@ -38,7 +53,7 @@ From there you have no choice but go get and compile the [ffmpeg sources](https:
 
 Or give up and convert your mp3 into wav to use dependency-free aubio executable .
  
- ## Mac environment
+### Mac environment
 Not tested.
 
 # Main depedency

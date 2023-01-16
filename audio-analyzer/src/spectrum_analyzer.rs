@@ -1,7 +1,6 @@
+/// TODO clean all this mess
 use std::borrow::{Borrow, BorrowMut};
 use std::path::Path;
-use std::rc::Rc;
-use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
 use crate::pixel_buf::PixelBuf;
@@ -22,12 +21,9 @@ const HEIGHT: usize = 768;
 
 pub fn analyze_samples(
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    path: &Path,
-    music_name: &str,
+    music_path: &Path,
     beats: &Vec<f64>,
 ) -> Option<(Box<Vec<f32>>, Vec<f64>, f64, u32, u64, u32, u32)> {
-    let music_path_buf = path.join(music_name);
-    let music_path = music_path_buf.as_path();
     let frame_rate_tag = String::from("frameRate");
     let channel_tag = String::from("channels");
     let frame_number_tag = String::from("frameNumber");
@@ -97,8 +93,7 @@ pub fn analyze_samples(
 }
 
 pub fn draw_static_into_window(
-    _path: &Path,
-    _music_name: &str,
+    _music_path: &Path,
     audio_samples: &Box<Vec<f32>>,
     beats: &Vec<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -132,8 +127,7 @@ pub fn draw_static_into_window(
 }
 
 pub fn draw_live_cursor_into_window(
-    _path: &Path,
-    _music_name: &str,
+    _music_path: &Path,
     audio_samples: &Box<Vec<f32>>,
     beats: &Vec<f64>,
     live_sample: Arc<Mutex<(u64, (u64, u64, f64))>>,
@@ -252,18 +246,16 @@ fn get_drawing_area(pixel_buf: &mut [u8]) -> DrawingArea<BitMapBackend<BGRXPixel
 }
 
 pub fn draw_into_png(
-    path: &Path,
-    music_name: &str,
+    output_img_path: &Path,
     audio_samples: &Box<Vec<f32>>,
     beats: &Vec<f64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let img = path.join(music_name.to_owned() + ".png");
-    println!("path is {:?}", img);
     let point_diam: u32 = 1;
     let smallest_step = 1.0 / find_smallest_step(beats).unwrap();
     //let last = beats.last().unwrap().round() + 10.0;
     let step_length = (beats.len() as f64) * smallest_step.round();
-    let root = BitMapBackend::new(img.to_str().unwrap(), (2048, 768)).into_drawing_area();
+    let root =
+        BitMapBackend::new(output_img_path.to_str().unwrap(), (2048, 768)).into_drawing_area();
     let x_max = audio_samples.len() as f64;
     let x_min = 0.0;
     let x_range = x_min..x_max;
@@ -276,8 +268,10 @@ pub fn draw_into_png(
     }
     // To avoid the IO failure being ignored silently, we manually call the present function
     root.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
-    println!("Result has been saved to {}", img.to_str().unwrap());
-
+    println!(
+        "Result has been saved to {}",
+        output_img_path.to_str().unwrap()
+    );
     Ok(())
 }
 
