@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use crate::pixel_buf::PixelBuf;
-use audio_player::MetadataParserWrapper;
+use audio_player::{AudioTag, MetadataParserWrapper};
 use minifb::{Key, Window, WindowOptions};
 use plotters::backend::{BGRXPixel, PixelFormat};
 use plotters::chart::ChartState;
@@ -23,23 +23,14 @@ pub fn analyze_samples(
     metadata_parser: &Box<dyn MetadataParserWrapper>,
     music_path: &Path,
     beats: &Vec<f64>,
-) -> Option<(Box<Vec<f32>>, Vec<f64>, f64, u32, u64, u32, u32)> {
-    let frame_rate_tag = String::from("frameRate");
-    let channel_tag = String::from("channels");
-    let frame_number_tag = String::from("frameNumber");
-    let bit_enc_tag = String::from("bit_per_sample_enc");
-    let bit_dec_tag = String::from("bit_per_sample_dec");
-    let frame_rate = metadata_parser.get_metadata_string(music_path, &frame_rate_tag);
-    let channel_count = metadata_parser.get_metadata_string(music_path, &channel_tag);
-    let frame_number = metadata_parser.get_metadata_string(music_path, &frame_number_tag);
-    let bit_enc = metadata_parser.get_metadata_string(music_path, &bit_enc_tag);
-    let bit_dec = metadata_parser.get_metadata_string(music_path, &bit_dec_tag);
-    if let (Ok(rate), Ok(channel_c), Ok(frame_nb), Ok(bit_enc_str), Ok(bit_dec_str)) =
-        (frame_rate, channel_count, frame_number, bit_enc, bit_dec)
-    {
+) -> Option<(Box<Vec<f32>>, Vec<f64>, f64, u32, u64)> {
+    let frame_rate = metadata_parser.get_metadata_string(music_path, &AudioTag::FrameRate);
+    let channel_count = metadata_parser.get_metadata_string(music_path, &AudioTag::ChannelsNumber);
+    let frame_number = metadata_parser.get_metadata_string(music_path, &AudioTag::TotalFrames);
+    if let (Ok(rate), Ok(channel_c), Ok(frame_nb)) = (frame_rate, channel_count, frame_number) {
         println!(
-            "audio has framerate of {}, for channels count of {} with frame number of {}, , bits_encoded {}, bit_dec {}",
-            rate, channel_c, frame_nb, bit_enc_str, bit_dec_str
+            "audio has framerate of {}, for channels count of {} with frame number of {}, ",
+            rate, channel_c, frame_nb
         );
 
         if let Some(samples) = metadata_parser.get_file_samples(music_path) {
@@ -47,8 +38,6 @@ pub fn analyze_samples(
             let inverse_sample_rate = 1.0 / rate.parse::<f64>().unwrap();
             let channel_nb = channel_c.parse::<u32>().unwrap();
             let frame_nb_number = frame_nb.parse::<u64>().unwrap();
-            let bit_enc_nb = bit_enc_str.parse::<u32>().unwrap();
-            let bit_dec_nb = bit_dec_str.parse::<u32>().unwrap();
             println!(
                 "samples length {} at frame rate is {}",
                 (samples.len() as f64) * inverse_sample_rate / channel_nb as f64,
@@ -84,8 +73,6 @@ pub fn analyze_samples(
                 inverse_sample_rate,
                 channel_nb,
                 frame_nb_number,
-                bit_enc_nb,
-                bit_dec_nb,
             ));
         }
     }

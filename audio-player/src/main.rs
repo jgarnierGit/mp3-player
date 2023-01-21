@@ -1,3 +1,4 @@
+mod audio_tags;
 mod symphonia_wrapper;
 use args::Cli;
 use log::error;
@@ -10,6 +11,7 @@ use std::{
 };
 
 mod args;
+use crate::audio_tags::AudioTag;
 use clap::Parser;
 
 fn main() {
@@ -74,10 +76,11 @@ fn process_live_audio_sample(music_path: &Path) {
 
 fn process_tag(music_path: &Path, tags: &[String]) {
     let iter_tags = tags.into_iter();
-    for tag in iter_tags {
+    for tag_str in iter_tags {
         // TODO next improvment is to pass tags list directly and not reopening file each time.
+        let tag = AudioTag::from(tag_str.as_str());
         let res = symphonia_wrapper::get_metadata_string(music_path, &tag).unwrap();
-        println!("tag :{}= {}", tag, res);
+        println!("tag :{:?}= {}", tag, res);
     }
 }
 

@@ -1,5 +1,5 @@
 use audio_manager::audio_library::{metadata_aggregator, visitor};
-use audio_player::{MetadataParserBuilder, MetadataParserWrapper};
+use audio_player::{AudioTag, MetadataParserBuilder, MetadataParserWrapper};
 use std::fs::DirEntry;
 use std::path::Path;
 use std::rc::Rc;
@@ -29,12 +29,21 @@ fn run(args: &Cli) -> Result<i32, Box<dyn std::error::Error>> {
         count_music(music_folder_path);
     }
     if let Some(tag_agg) = args.aggregate_tag.as_deref() {
-        process_aggregation(music_folder_path, &metadata_parser, tag_agg);
+        process_aggregation(
+            music_folder_path,
+            &metadata_parser,
+            &AudioTag::from(tag_agg),
+        );
     }
     if let (Some(tag_filter), Some(tag_value)) =
         (args.filter_tag.as_deref(), args.filter_value.as_deref())
     {
-        process_filter(music_folder_path, &metadata_parser, tag_filter, tag_value);
+        process_filter(
+            music_folder_path,
+            &metadata_parser,
+            &AudioTag::from(tag_filter),
+            tag_value,
+        );
     }
     Ok(1)
 }
@@ -42,28 +51,21 @@ fn run(args: &Cli) -> Result<i32, Box<dyn std::error::Error>> {
 fn process_aggregation(
     music_folder_path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag_agg: &str,
+    tag_agg: &AudioTag,
 ) {
-    let tag_agg_string = String::from(tag_agg); // FIXME change signature to &str
     let (res_metadata_aggr, errs) =
-        metadata_aggregator::aggregate_by(music_folder_path, &metadata_parser, &tag_agg_string);
+        metadata_aggregator::aggregate_by(music_folder_path, &metadata_parser, tag_agg);
     println!("metadatas aggregated {:?}", res_metadata_aggr);
     println!("errors {:?}", errs);
 }
 fn process_filter(
     music_folder_path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag_filter: &str,
+    tag_filter: &AudioTag,
     tag_value: &str,
 ) {
-    let tag_agg_string = String::from(tag_filter); // FIXME change signature to &str
-
-    let (res_metadata_filter, errs) = metadata_aggregator::filter_by(
-        music_folder_path,
-        &metadata_parser,
-        &tag_agg_string,
-        tag_value,
-    );
+    let (res_metadata_filter, errs) =
+        metadata_aggregator::filter_by(music_folder_path, &metadata_parser, tag_filter, tag_value);
     // TODO add an iterator layer logic for haevy results.
     println!("metadatas filtered {:?}", res_metadata_filter);
     println!("errors {:?}", errs);

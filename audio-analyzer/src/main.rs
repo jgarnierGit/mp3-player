@@ -108,15 +108,8 @@ fn static_spectrum_display(
     beats: Vec<f64>,
     metadata_parser: Box<dyn MetadataParserWrapper>,
 ) {
-    if let Some((
-        samples_formatted,
-        beats_formatted,
-        _frame_rate,
-        _channel_nb,
-        _frame_number,
-        _bit_enc,
-        _bit_dec,
-    )) = analyze_samples(&metadata_parser, music_path, &beats)
+    if let Some((samples_formatted, beats_formatted, _frame_rate, _channel_nb, _frame_number)) =
+        analyze_samples(&metadata_parser, music_path, &beats)
     {
         draw_static_into_window(music_path, &samples_formatted, &beats_formatted).unwrap();
     }
@@ -127,15 +120,8 @@ fn live_spectrum_display(
     beats: Vec<f64>,
     metadata_parser: Box<dyn MetadataParserWrapper>,
 ) {
-    if let Some((
-        samples_formatted,
-        beats_formatted,
-        _frame_rate,
-        _channel_nb,
-        _frame_number,
-        _bit_enc,
-        _bit_dec,
-    )) = analyze_samples(&metadata_parser, music_path, &beats)
+    if let Some((samples_formatted, beats_formatted, _frame_rate, _channel_nb, _frame_number)) =
+        analyze_samples(&metadata_parser, music_path, &beats)
     {
         live_play(music_path.to_path_buf(), samples_formatted, beats_formatted);
     }
@@ -147,15 +133,8 @@ fn save_as_png(
     beats: Vec<f64>,
     metadata_parser: Box<dyn MetadataParserWrapper>,
 ) {
-    if let Some((
-        samples_formatted,
-        beats_formatted,
-        _frame_rate,
-        _channel_nb,
-        _frame_number,
-        _bit_enc,
-        _bit_dec,
-    )) = analyze_samples(&metadata_parser, music_path, &beats)
+    if let Some((samples_formatted, beats_formatted, _frame_rate, _channel_nb, _frame_number)) =
+        analyze_samples(&metadata_parser, music_path, &beats)
     {
         draw_into_png(output_path, &samples_formatted, &beats_formatted).unwrap();
     }

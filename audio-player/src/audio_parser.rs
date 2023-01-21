@@ -1,3 +1,4 @@
+use crate::AudioTag;
 use crate::symphonia_wrapper;
 use std::error::Error;
 use std::path::Path;
@@ -14,7 +15,7 @@ pub trait MetadataParserWrapper {
     fn get_metadata_string(
         &self,
         audio_path: &Path,
-        target_metadata: &String,
+        target_metadata: &AudioTag,
     ) -> Result<String, Box<dyn Error>>;
     /// DEBUG : Print audio file thumbnail
     fn print_visuals(&self, audio_path: &Path);
@@ -30,6 +31,7 @@ pub trait MetadataParserWrapper {
 
 pub mod metadata_parser_builder {
     use crate::audio_parser::SymphoniaWrapper;
+    use crate::AudioTag;
     use crate::MetadataParserWrapper;
     use std::error::Error;
     use std::path::Path;
@@ -51,7 +53,7 @@ pub mod metadata_parser_builder {
         fn get_metadata_string(
             &self,
             audio_path: &Path,
-            target_metadata: &String,
+            target_metadata: &AudioTag,
         ) -> Result<String, Box<dyn Error>> {
             self.wrapped
                 .get_metadata_string(audio_path, target_metadata)
@@ -87,7 +89,7 @@ impl MetadataParserWrapper for SymphoniaWrapper {
     fn get_metadata_string(
         &self,
         audio_path: &Path,
-        target_metadata: &String,
+        target_metadata: &AudioTag,
     ) -> Result<String, Box<dyn Error>> {
         symphonia_wrapper::get_metadata_string(audio_path, target_metadata)
     }

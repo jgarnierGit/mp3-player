@@ -1,14 +1,14 @@
 use std::error::Error;
 use std::{collections::HashMap, fs::DirEntry, path::Path, rc::Rc};
 
-use audio_player::MetadataParserWrapper;
+use audio_player::{AudioTag, MetadataParserWrapper};
 
 use crate::audio_library::visitor;
 
 pub fn aggregate_by(
     path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag: &String,
+    tag: &AudioTag,
 ) -> (Rc<HashMap<String, Rc<usize>>>, Rc<Vec<Box<dyn Error>>>) {
     let mut sample_aggr: Rc<HashMap<String, Rc<usize>>> = Rc::new(HashMap::new());
     let mut errors: Rc<Vec<Box<dyn Error>>> = Rc::new(Vec::new());
@@ -43,7 +43,7 @@ pub fn aggregate_by(
 pub fn filter_by(
     path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag: &String,
+    tag: &AudioTag,
     value: &str,
 ) -> (
     Rc<HashMap<String, Rc<Vec<String>>>>,
@@ -105,7 +105,7 @@ mod tests {
         fn get_metadata_string(
             &self,
             audio_path: &Path,
-            _target_metadata: &String,
+            _target_metadata: &AudioTag,
         ) -> Result<String, Box<dyn Error>> {
             let mut buffer: String = String::new();
             println!("reading test file {:?}", audio_path);
@@ -204,7 +204,8 @@ mod tests {
         let metal_content = "Metal";
         let rock_content = "Rock";
         let empty_content = "Ska";
-        let tag = String::from("who cares");
+        // content read directly by its value for the test
+        let tag = AudioTag::from("who cares");
         let root_dir = Builder::new().tempdir_in("./").unwrap();
         let root_path = root_dir.into_path();
         let (root_audio, root_dir) = create_temp_file(&root_path, false, metal_content);
@@ -233,7 +234,8 @@ mod tests {
         let metal_content = "Metal";
         let rock_content = "Rock";
         let empty_content = "Ska";
-        let tag = String::from("who cares");
+        // content read directly by its value for the test
+        let tag = AudioTag::from("who cares");
         let root_dir = Builder::new().tempdir_in("./").unwrap();
         let root_path = root_dir.into_path();
         let (root_audio, root_dir) = create_temp_file(&root_path, false, metal_content);
@@ -256,16 +258,5 @@ mod tests {
         drop_temp_dir(sub_dir);
         drop_temp_dir(sub_dir2);
         drop_temp_dir(root_dir);
-    }
-
-    #[test]
-    #[ignore]
-    fn it_aggregate_genre() {
-        let tag = String::from("who cares");
-        //  let mut tmpfile: File = tempfile::tempfile().unwrap();
-        let path = Path::new("D:/Documents/prog/rust/mp3Player/audio-project/audio-manager/assets");
-        let metadata_parser = MetadataParserBuilder::build();
-        let (result_aggr_genre, _) = aggregate_by(path, &metadata_parser, &tag);
-        assert_eq!(result_aggr_genre.len(), 3)
     }
 }

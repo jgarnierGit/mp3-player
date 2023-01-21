@@ -6,7 +6,10 @@ use symphonia::core::{
     units::TimeBase,
 };
 
+use crate::audio_tags::AudioTag;
+
 use super::commons;
+
 use log::info;
 use std::error::Error;
 use std::path::Path;
@@ -20,38 +23,35 @@ pub fn parse(music_path: &Path) {
 }
 
 /// FIXME can surely return non static lifetime as metadata is get from audio_path?
-pub fn get_metadata_string(
-    audio_path: &Path,
-    target_metadata: &String,
-) -> Result<String, Box<dyn Error>> {
+pub fn get_metadata_string(audio_path: &Path, target: &AudioTag) -> Result<String, Box<dyn Error>> {
     let mut probed = commons::get_probe(audio_path)?;
     // Prefer metadata that's provided in the container format, over other tags found during the
     // probe operation.
     let tag_content: String;
 
     // try find target metadata in format :
-    if let Some(format_item) = get_tracks_string(probed.format.tracks(), &target_metadata) {
+    if let Some(format_item) = get_tracks_string(probed.format.tracks(), &target) {
         return Ok(format_item);
     }
 
     // try finding target metadata in tags :
     if let Some(metadata_rev) = probed.format.metadata().current() {
-        tag_content = get_tag_string(metadata_rev.tags(), &target_metadata);
+        tag_content = get_tag_string(metadata_rev.tags(), &target);
     } else if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
-        tag_content = get_tag_string(metadata_rev.tags(), &target_metadata);
+        tag_content = get_tag_string(metadata_rev.tags(), &target);
     } else {
         tag_content = String::from("");
     }
     Ok(tag_content)
 }
 
-fn get_tag_string(tags: &[Tag], target_metadata: &String) -> String {
+fn get_tag_string(tags: &[Tag], target: &AudioTag) -> String {
     if !tags.is_empty() {
         let mut idx = 1;
 
         // Print tags with a standard tag key first, these are the most common tags.
         for tag in tags.iter().filter(|tag| tag.is_known()) {
-            if let Some(matchin_result) = get_matching_tag(tag, target_metadata) {
+            if let Some(matchin_result) = get_matching_tag(tag, target) {
                 return matchin_result.to_string();
             }
             idx += 1;
@@ -59,7 +59,7 @@ fn get_tag_string(tags: &[Tag], target_metadata: &String) -> String {
 
         // Print the remaining tags with keys truncated to 26 characters.
         for tag in tags.iter().filter(|tag| !tag.is_known()) {
-            if let Some(matchin_result) = get_matching_tag(tag, target_metadata) {
+            if let Some(matchin_result) = get_matching_tag(tag, target) {
                 return matchin_result.to_string();
             }
             idx += 1;
@@ -68,9 +68,9 @@ fn get_tag_string(tags: &[Tag], target_metadata: &String) -> String {
     String::from("")
 }
 
-fn get_matching_tag<'a>(tag: &'a Tag, target_metadata: &String) -> Option<&'a Value> {
+fn get_matching_tag<'a>(tag: &'a Tag, target: &AudioTag) -> Option<&'a Value> {
     if let Some(std_key) = tag.std_key {
-        if let Some(target_key) = get_stantard_tag_key(target_metadata) {
+        if let Some(target_key) = get_stantard_tag_key(target) {
             if std_key == target_key {
                 return Some(&tag.value);
             }
@@ -79,9 +79,16 @@ fn get_matching_tag<'a>(tag: &'a Tag, target_metadata: &String) -> Option<&'a Va
     None
 }
 
-fn get_stantard_tag_key(target_metadata: &String) -> Option<StandardTagKey> {
-    match target_metadata.as_str() {
-        "genre" => Some(StandardTagKey::Genre),
+fn get_stantard_tag_key(target: &AudioTag) -> Option<StandardTagKey> {
+    match target {
+        AudioTag::Artist => Some(StandardTagKey::Artist),
+        AudioTag::Album => Some(StandardTagKey::Album),
+        AudioTag::Bpm => Some(StandardTagKey::Bpm),
+        AudioTag::Date => Some(StandardTagKey::Date),
+        AudioTag::Genre => Some(StandardTagKey::Genre),
+        AudioTag::Lyrics => Some(StandardTagKey::Lyrics),
+        AudioTag::TrackNumber => Some(StandardTagKey::TrackNumber),
+        AudioTag::TrackName => Some(StandardTagKey::TrackTitle),
         _ => None,
     }
 }
@@ -110,7 +117,7 @@ fn print_format(probed: &mut ProbeResult) {
     println!();
 }
 
-fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<String> {
+fn get_tracks_string(tracks: &[Track], target: &AudioTag) -> Option<String> {
     if tracks.is_empty() {
         return None;
     }
@@ -120,36 +127,17 @@ fn get_tracks_string(tracks: &[Track], target_metadata: &String) -> Option<Strin
     }*/
     let track_content = if let Some(track) = tracks.first() {
         let params = &track.codec_params;
-        match target_metadata.as_str() {
-            "duration" => get_duration(params),
-            "frameRate" => get_sample_rate(params),
-            "channels" => get_channels(params),
-            "frameNumber" => get_frame_number(params),
-            "bit_per_sample_enc" => get_bit_per_sample_encoded(params),
-            "bit_per_sample_dec" => get_bit_per_sample_decoded(params),
-            // TODO implement other track tags
+        match target {
+            AudioTag::Duration => get_duration(params),
+            AudioTag::FrameRate => get_sample_rate(params),
+            AudioTag::ChannelsNumber => get_channels(params),
+            AudioTag::TotalFrames => get_frame_number(params),
             _ => None,
         }
     } else {
         None
     };
     track_content
-}
-
-/// TODO and make a generic method based on what I learned
-fn get_track_numeric(tracks: &[Track], target_metadata: &String) {}
-
-fn get_bit_per_sample_encoded(params: &CodecParameters) -> Option<String> {
-    match params.bits_per_coded_sample {
-        Some(bits) => Some(bits.to_string()),
-        None => None,
-    }
-}
-fn get_bit_per_sample_decoded(params: &CodecParameters) -> Option<String> {
-    match params.bits_per_sample {
-        Some(bits) => Some(bits.to_string()),
-        None => None,
-    }
 }
 
 /// Get total audio file frame count
