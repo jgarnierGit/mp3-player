@@ -1,3 +1,4 @@
+mod audio_parser;
 mod audio_tags;
 mod symphonia_wrapper;
 use args::Cli;
@@ -76,12 +77,9 @@ fn process_live_audio_sample(music_path: &Path) {
 
 fn process_tag(music_path: &Path, tags: &[String]) {
     let iter_tags = tags.into_iter();
-    for tag_str in iter_tags {
-        // TODO next improvment is to pass tags list directly and not reopening file each time.
-        let tag = AudioTag::from(tag_str.as_str());
-        let res = symphonia_wrapper::get_metadata_string(music_path, &tag).unwrap();
-        println!("tag :{:?}= {}", tag, res);
-    }
+    let tags_list: Vec<AudioTag> = iter_tags.map(AudioTag::from).collect();
+    let res = symphonia_wrapper::get_metadata_string(music_path, &tags_list).unwrap();
+    println!("tag :{:?}= {:?}", tags_list, res);
 }
 
 fn process_play(music_path: &Path) -> Result<i32, Box<dyn std::error::Error>> {

@@ -24,10 +24,18 @@ pub fn analyze_samples(
     music_path: &Path,
     beats: &Vec<f64>,
 ) -> Option<(Box<Vec<f32>>, Vec<f64>, f64, u32, u64)> {
-    let frame_rate = metadata_parser.get_metadata_string(music_path, &AudioTag::FrameRate);
-    let channel_count = metadata_parser.get_metadata_string(music_path, &AudioTag::ChannelsNumber);
-    let frame_number = metadata_parser.get_metadata_string(music_path, &AudioTag::TotalFrames);
-    if let (Ok(rate), Ok(channel_c), Ok(frame_nb)) = (frame_rate, channel_count, frame_number) {
+    let tag_values_res = metadata_parser.get_metadata_string(
+        music_path,
+        &vec![
+            AudioTag::FrameRate,
+            AudioTag::ChannelsNumber,
+            AudioTag::TotalFrames,
+        ],
+    );
+    if let Ok(tag_values) = tag_values_res {
+        let rate = tag_values.get(0).unwrap().as_ref().unwrap();
+        let channel_c = tag_values.get(1).unwrap().as_ref().unwrap();
+        let frame_nb = tag_values.get(2).unwrap().as_ref().unwrap();
         println!(
             "audio has framerate of {}, for channels count of {} with frame number of {}, ",
             rate, channel_c, frame_nb

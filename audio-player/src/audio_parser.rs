@@ -1,22 +1,20 @@
-use crate::AudioTag;
 use crate::symphonia_wrapper;
+use crate::AudioTag;
 use std::error::Error;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
 
+pub type TagsResult = Result<Vec<Option<String>>, Box<dyn Error>>;
 pub trait MetadataParserWrapper {
     /// DEBUG : Print audio tags
     fn print_tags(&self, audio_path: &Path);
     /// DEBUG : Print audio file metadata
     fn print_metadata(&self, audio_path: &Path);
     /// Get a file target metadata
-    fn get_metadata_string(
-        &self,
-        audio_path: &Path,
-        target_metadata: &AudioTag,
-    ) -> Result<String, Box<dyn Error>>;
+    fn get_metadata_string(&self, audio_path: &Path, target_metadata: &Vec<AudioTag>)
+        -> TagsResult;
     /// DEBUG : Print audio file thumbnail
     fn print_visuals(&self, audio_path: &Path);
     /// TODO : try to extract this to a proper Wrapper
@@ -30,14 +28,16 @@ pub trait MetadataParserWrapper {
 }
 
 pub mod metadata_parser_builder {
+    use crate::audio_parser::MetadataParserWrapper;
     use crate::audio_parser::SymphoniaWrapper;
     use crate::AudioTag;
-    use crate::MetadataParserWrapper;
     use std::error::Error;
     use std::path::Path;
     use std::rc::Rc;
     use std::sync::mpsc::Sender;
     use std::thread::JoinHandle;
+
+    use super::TagsResult;
 
     /// Build a MetadataParser from current crate used
     pub fn build() -> Box<dyn MetadataParserWrapper> {
@@ -53,8 +53,8 @@ pub mod metadata_parser_builder {
         fn get_metadata_string(
             &self,
             audio_path: &Path,
-            target_metadata: &AudioTag,
-        ) -> Result<String, Box<dyn Error>> {
+            target_metadata: &Vec<AudioTag>,
+        ) -> TagsResult {
             self.wrapped
                 .get_metadata_string(audio_path, target_metadata)
         }
@@ -89,8 +89,8 @@ impl MetadataParserWrapper for SymphoniaWrapper {
     fn get_metadata_string(
         &self,
         audio_path: &Path,
-        target_metadata: &AudioTag,
-    ) -> Result<String, Box<dyn Error>> {
+        target_metadata: &Vec<AudioTag>,
+    ) -> TagsResult {
         symphonia_wrapper::get_metadata_string(audio_path, target_metadata)
     }
     fn print_metadata(&self, audio_path: &Path) {

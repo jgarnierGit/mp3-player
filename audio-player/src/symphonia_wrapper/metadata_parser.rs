@@ -6,7 +6,7 @@ use symphonia::core::{
     units::TimeBase,
 };
 
-use crate::audio_tags::AudioTag;
+use crate::{audio_parser::TagsResult, audio_tags::AudioTag};
 
 use super::commons;
 
@@ -22,50 +22,54 @@ pub fn parse(music_path: &Path) {
     print_format(&mut probed);
 }
 
-/// FIXME can surely return non static lifetime as metadata is get from audio_path?
-pub fn get_metadata_string(audio_path: &Path, target: &AudioTag) -> Result<String, Box<dyn Error>> {
+/// # Returns tags content list ordered as input
+pub fn get_metadata_string(audio_path: &Path, target: &Vec<AudioTag>) -> TagsResult {
     let mut probed = commons::get_probe(audio_path)?;
     // Prefer metadata that's provided in the container format, over other tags found during the
     // probe operation.
-    let tag_content: String;
 
-    // try find target metadata in format :
-    if let Some(format_item) = get_tracks_string(probed.format.tracks(), &target) {
-        return Ok(format_item);
+    let mut content_list: Vec<Option<String>> = Vec::new();
+
+    for tag in target {
+        let tag_content: Option<String>;
+        // try find target metadata in format :
+        if let Some(format_item) = get_tracks_string(probed.format.tracks(), tag) {
+            content_list.push(Some(format_item));
+            continue;
+        }
+
+        // try finding target metadata in tags :
+        if let Some(metadata_rev) = probed.format.metadata().current() {
+            tag_content = get_tag_string(metadata_rev.tags(), tag);
+        } else if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current())
+        {
+            tag_content = get_tag_string(metadata_rev.tags(), tag);
+        } else {
+            tag_content = None;
+        }
+        content_list.push(tag_content);
     }
 
-    // try finding target metadata in tags :
-    if let Some(metadata_rev) = probed.format.metadata().current() {
-        tag_content = get_tag_string(metadata_rev.tags(), &target);
-    } else if let Some(metadata_rev) = probed.metadata.get().as_ref().and_then(|m| m.current()) {
-        tag_content = get_tag_string(metadata_rev.tags(), &target);
-    } else {
-        tag_content = String::from("");
-    }
-    Ok(tag_content)
+    Ok(content_list)
 }
 
-fn get_tag_string(tags: &[Tag], target: &AudioTag) -> String {
+fn get_tag_string(tags: &[Tag], target: &AudioTag) -> Option<String> {
     if !tags.is_empty() {
-        let mut idx = 1;
-
         // Print tags with a standard tag key first, these are the most common tags.
         for tag in tags.iter().filter(|tag| tag.is_known()) {
             if let Some(matchin_result) = get_matching_tag(tag, target) {
-                return matchin_result.to_string();
+                return Some(matchin_result.to_string());
             }
-            idx += 1;
         }
 
         // Print the remaining tags with keys truncated to 26 characters.
         for tag in tags.iter().filter(|tag| !tag.is_known()) {
             if let Some(matchin_result) = get_matching_tag(tag, target) {
-                return matchin_result.to_string();
+                return Some(matchin_result.to_string());
             }
-            idx += 1;
         }
     }
-    String::from("")
+    None
 }
 
 fn get_matching_tag<'a>(tag: &'a Tag, target: &AudioTag) -> Option<&'a Value> {

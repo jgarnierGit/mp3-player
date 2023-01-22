@@ -14,7 +14,7 @@ audio-player -i /path/to/file -p
 # Print all metadata / tags file
 audio-player -i /path/to/file -a
 
-# Print targeted metadata / tags file, cumulative i.e ["duration","frameRate","channels","genre"]
+# Print targeted metadata / tags file, cumulative i.e ["artist", "album", "bpm", "date", "genre", "lyrics", "trackNumber", "trackName", "duration", "frameRate", "channelsNumber", "totalFrames"]
 audio-player -i /path/to/file -t <TAG>
 
 # Get audio data array in memory

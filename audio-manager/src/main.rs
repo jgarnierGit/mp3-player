@@ -32,7 +32,7 @@ fn run(args: &Cli) -> Result<i32, Box<dyn std::error::Error>> {
         process_aggregation(
             music_folder_path,
             &metadata_parser,
-            &AudioTag::from(tag_agg),
+            &vec![AudioTag::from(tag_agg)],
         );
     }
     if let (Some(tag_filter), Some(tag_value)) =
@@ -41,7 +41,7 @@ fn run(args: &Cli) -> Result<i32, Box<dyn std::error::Error>> {
         process_filter(
             music_folder_path,
             &metadata_parser,
-            &AudioTag::from(tag_filter),
+            &vec![AudioTag::from(tag_filter)],
             tag_value,
         );
     }
@@ -51,7 +51,7 @@ fn run(args: &Cli) -> Result<i32, Box<dyn std::error::Error>> {
 fn process_aggregation(
     music_folder_path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag_agg: &AudioTag,
+    tag_agg: &Vec<AudioTag>,
 ) {
     let (res_metadata_aggr, errs) =
         metadata_aggregator::aggregate_by(music_folder_path, &metadata_parser, tag_agg);
@@ -61,7 +61,7 @@ fn process_aggregation(
 fn process_filter(
     music_folder_path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag_filter: &AudioTag,
+    tag_filter: &Vec<AudioTag>,
     tag_value: &str,
 ) {
     let (res_metadata_filter, errs) =

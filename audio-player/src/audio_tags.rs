@@ -19,23 +19,33 @@ pub enum AudioTag {
 }
 
 impl From<&str> for AudioTag {
-    fn from(value: &str) -> Self {
-        match value {
-            "artist" => AudioTag::Artist,
-            "album" => AudioTag::Album,
-            "bpm" => AudioTag::Bpm,
-            "date" => AudioTag::Date,
-            "genre" => AudioTag::Genre,
-            "lyrics" => AudioTag::Lyrics,
-            "trackNumber" => AudioTag::TrackNumber,
-            "trackName" => AudioTag::TrackName,
-            // Metadatas
-            "duration" => AudioTag::Duration,
-            "frameRate" => AudioTag::FrameRate,
-            "channelsNumber" => AudioTag::ChannelsNumber,
-            /// Total frames count
-            "totalFrames" => AudioTag::TotalFrames,
-            _ => AudioTag::Unknown,
-        }
+    fn from(value: &str) -> AudioTag {
+        from_str_to_audio_tag(value)
+    }
+}
+
+impl From<&String> for AudioTag {
+    fn from(value: &String) -> Self {
+        from_str_to_audio_tag(value.as_str())
+    }
+}
+
+fn from_str_to_audio_tag(value: &str) -> AudioTag {
+    match value {
+        "artist" => AudioTag::Artist,
+        "album" => AudioTag::Album,
+        "bpm" => AudioTag::Bpm,
+        "date" => AudioTag::Date,
+        "genre" => AudioTag::Genre,
+        "lyrics" => AudioTag::Lyrics,
+        "trackNumber" => AudioTag::TrackNumber,
+        "trackName" => AudioTag::TrackName,
+        // Metadatas
+        "duration" => AudioTag::Duration,
+        "frameRate" => AudioTag::FrameRate,
+        "channelsNumber" => AudioTag::ChannelsNumber,
+        /// Total frames count
+        "totalFrames" => AudioTag::TotalFrames,
+        _ => AudioTag::Unknown,
     }
 }

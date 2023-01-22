@@ -5,10 +5,17 @@ use audio_player::{AudioTag, MetadataParserWrapper};
 
 use crate::audio_library::visitor;
 
+/// Aggregate Audio files based on tags list given.
+/// For now it only accepts the first tag
+///
+/// # Arguments
+/// * `path` - Audio folder to parse recursively
+/// * `metadata_parser` - Audio file reader
+/// * `tags` - aggregation tags, default behavior is an "And" connector
 pub fn aggregate_by(
     path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag: &AudioTag,
+    tags: &Vec<AudioTag>,
 ) -> (Rc<HashMap<String, Rc<usize>>>, Rc<Vec<Box<dyn Error>>>) {
     let mut sample_aggr: Rc<HashMap<String, Rc<usize>>> = Rc::new(HashMap::new());
     let mut errors: Rc<Vec<Box<dyn Error>>> = Rc::new(Vec::new());
@@ -18,13 +25,15 @@ pub fn aggregate_by(
         let mut_errors = Rc::get_mut(&mut errors).unwrap();
 
         move |_dir: &DirEntry, audio_path: &Path| {
-            match metadata_parser.get_metadata_string(audio_path, tag) {
-                Ok(metadata) => {
-                    if let Some(counting) = mut_map.get_mut(&metadata) {
+            match metadata_parser.get_metadata_string(audio_path, tags) {
+                Ok(tags_content) => {
+                    let content_opt = tags_content.get(0).unwrap();
+                    let content = content_opt.as_ref().unwrap();
+                    if let Some(counting) = mut_map.get_mut(content) {
                         let mut_counting = Rc::get_mut(counting).unwrap();
                         *mut_counting += 1;
                     } else {
-                        mut_map.insert(metadata, Rc::new(1));
+                        mut_map.insert(content.clone(), Rc::new(1));
                     }
                 }
                 Err(error) => {
@@ -39,11 +48,18 @@ pub fn aggregate_by(
     (sample_aggr, errors)
 }
 
-/// By default, filters and get music path.
+/// Filters Audio files and returns music path.
+/// For now it only accepts the first tag
+///
+/// # Arguments
+/// * `path` - Audio folder to parse recursively
+/// * `metadata_parser` - Audio file reader
+/// * `tags` - filtering tags, default behavior is an "And" connector
+/// * `value` - tag value, for the first tag list only for now.
 pub fn filter_by(
     path: &Path,
     metadata_parser: &Box<dyn MetadataParserWrapper>,
-    tag: &AudioTag,
+    tags: &Vec<AudioTag>,
     value: &str,
 ) -> (
     Rc<HashMap<String, Rc<Vec<String>>>>,
@@ -56,16 +72,20 @@ pub fn filter_by(
         let mut_map = Rc::get_mut(&mut filtered).unwrap();
         let mut_errors = Rc::get_mut(&mut errors).unwrap();
         move |_dir: &DirEntry, audio_path: &Path| {
-            match metadata_parser.get_metadata_string(audio_path, tag) {
-                Ok(metadata) if metadata.as_str() == value => {
-                    if let Some(filtered_sound) = mut_map.get_mut(&metadata) {
-                        let mut_filtered_sound = Rc::get_mut(filtered_sound).unwrap();
-                        mut_filtered_sound.push(String::from(audio_path.to_str().unwrap()));
-                    } else {
-                        mut_map.insert(
-                            metadata,
-                            Rc::new(vec![String::from(audio_path.to_str().unwrap())]),
-                        );
+            match metadata_parser.get_metadata_string(audio_path, &tags) {
+                Ok(metadata) => {
+                    let metadata_content_opt = metadata.get(0).unwrap();
+                    let metadata_content = metadata_content_opt.as_ref().unwrap();
+                    if metadata_content.as_str() == value {
+                        if let Some(filtered_sound) = mut_map.get_mut(metadata_content) {
+                            let mut_filtered_sound = Rc::get_mut(filtered_sound).unwrap();
+                            mut_filtered_sound.push(String::from(audio_path.to_str().unwrap()));
+                        } else {
+                            mut_map.insert(
+                                metadata_content.clone(),
+                                Rc::new(vec![String::from(audio_path.to_str().unwrap())]),
+                            );
+                        }
                     }
                 }
                 Ok(_) => (),
@@ -84,7 +104,7 @@ pub fn filter_by(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use audio_player::MetadataParserBuilder;
+    use audio_player::{MetadataParserBuilder, TagsResult};
     use std::error::Error;
     use std::fs::{self, File};
     use std::io::Read;
@@ -105,13 +125,13 @@ mod tests {
         fn get_metadata_string(
             &self,
             audio_path: &Path,
-            _target_metadata: &AudioTag,
-        ) -> Result<String, Box<dyn Error>> {
+            _target_metadata: &Vec<AudioTag>,
+        ) -> TagsResult {
             let mut buffer: String = String::new();
             println!("reading test file {:?}", audio_path);
             let mut audio = File::open(audio_path).unwrap();
             audio.read_to_string(&mut buffer).unwrap();
-            Ok(buffer)
+            Ok(vec![Some(buffer)])
         }
 
         fn print_metadata(&self, _audio_path: &Path) {}
@@ -205,7 +225,7 @@ mod tests {
         let rock_content = "Rock";
         let empty_content = "Ska";
         // content read directly by its value for the test
-        let tag = AudioTag::from("who cares");
+        let tag = vec![AudioTag::from("who cares")];
         let root_dir = Builder::new().tempdir_in("./").unwrap();
         let root_path = root_dir.into_path();
         let (root_audio, root_dir) = create_temp_file(&root_path, false, metal_content);
@@ -235,7 +255,7 @@ mod tests {
         let rock_content = "Rock";
         let empty_content = "Ska";
         // content read directly by its value for the test
-        let tag = AudioTag::from("who cares");
+        let tag = vec![AudioTag::from("who cares")];
         let root_dir = Builder::new().tempdir_in("./").unwrap();
         let root_path = root_dir.into_path();
         let (root_audio, root_dir) = create_temp_file(&root_path, false, metal_content);
