@@ -3,6 +3,7 @@ use std::{collections::HashMap, fs::DirEntry, path::Path, rc::Rc};
 
 use audio_player::{AudioTag, MetadataParserWrapper};
 
+use crate::audio_library::tags_aggregator_result_builder;
 use crate::audio_library::visitor;
 
 /// Aggregate Audio files based on tags list given.
@@ -17,6 +18,7 @@ pub fn aggregate_by(
     metadata_parser: &Box<dyn MetadataParserWrapper>,
     tags: &Vec<AudioTag>,
 ) -> (Rc<HashMap<String, Rc<usize>>>, Rc<Vec<Box<dyn Error>>>) {
+    let tag_aggregator_model = tags_aggregator_result_builder::build_structure(tags);
     let mut sample_aggr: Rc<HashMap<String, Rc<usize>>> = Rc::new(HashMap::new());
     let mut errors: Rc<Vec<Box<dyn Error>>> = Rc::new(Vec::new());
 
