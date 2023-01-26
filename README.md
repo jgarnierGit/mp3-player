@@ -5,8 +5,17 @@ Personal project of an audio manager & player written in Rust
 
 # Installation
 Environment requirements :
-
  - Rustup - Toolchain management : https://www.rust-lang.org/tools/install
+
+On Ubuntu 22.04 :
+
+install pkg-config and libfontconfig-dev
+
+`sudo apt-get install -y pkg-config libfontconfig-dev`
+
+create a missing file named `audio-player/src/metadata_wrapper/mod.rs` (to avoid the compilation to fail)
+
+`touch audio-player/src/metadata_wrapper/mod.rs` 
 
 # Launch
 To get a prod optimized executable, in project root :
