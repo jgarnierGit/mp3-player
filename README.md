@@ -11,7 +11,9 @@ On Ubuntu 22.04 :
 
 install pkg-config and libfontconfig-dev
 
-`sudo apt-get install -y pkg-config libfontconfig-dev`
+`sudo apt  install -y build-essential`
+restart then:
+`sudo apt-get install -y pkg-config libfontconfig-dev libpulse-dev`
 
 create a missing file named `audio-player/src/metadata_wrapper/mod.rs` (to avoid the compilation to fail)
 
