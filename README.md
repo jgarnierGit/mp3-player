@@ -15,10 +15,6 @@ install pkg-config and libfontconfig-dev
 restart then:
 `sudo apt-get install -y pkg-config libfontconfig-dev libpulse-dev`
 
-create a missing file named `audio-player/src/metadata_wrapper/mod.rs` (to avoid the compilation to fail)
-
-`touch audio-player/src/metadata_wrapper/mod.rs` 
-
 # Launch
 To get a prod optimized executable, in project root :
 
